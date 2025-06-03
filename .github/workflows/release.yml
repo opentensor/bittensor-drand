@@ -39,9 +39,10 @@ jobs:
       # Only set env vars for aarch64
       - name: Set OpenSSL env for aarch64
         if: ${{ matrix.platform.target == 'aarch64' }}
-        run: echo "OPENSSL_DIR=/usr/aarch64-unknown-linux-gnu" >> $GITHUB_ENV && \
-             echo "OPENSSL_INCLUDE_DIR=/usr/aarch64-unknown-linux-gnu/include" >> $GITHUB_ENV && \
-             echo "OPENSSL_LIB_DIR=/usr/aarch64-unknown-linux-gnu/lib" >> $GITHUB_ENV
+        run: |
+          echo "OPENSSL_DIR=/usr/aarch64-unknown-linux-gnu" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=/usr/aarch64-unknown-linux-gnu/include" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=/usr/aarch64-unknown-linux-gnu/lib" >> $GITHUB_ENV
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1.44.0
