@@ -36,21 +36,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Only set env vars for aarch64
-      - name: Set OpenSSL env for aarch64
-        if: ${{ matrix.platform.target == 'aarch64' }}
-        run: |
-          echo "OPENSSL_DIR=/usr/aarch64-unknown-linux-gnu" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/aarch64-unknown-linux-gnu/include" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/aarch64-unknown-linux-gnu/lib" >> $GITHUB_ENV
-
       - name: Build wheels
         uses: PyO3/maturin-action@v1.44.0
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
           sccache: 'true'
-          manylinux: auto
+          manylinux: ${{ matrix.platform.target == 'aarch64' && '2_28' || 'auto' }}
           before-script-linux: (apt-get update && apt-get install -y apt-utils && apt-get install -y pkg-config libssl-dev) || (yum install openssl openssl-devel -y)
 
       - name: Upload wheels
