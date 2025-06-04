@@ -41,7 +41,7 @@ jobs:
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          target: ${{ matrix.platform.target }}
+          target: aarch64
 
       - uses: PyO3/maturin-action@v1.44.0
         with:
