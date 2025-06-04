@@ -23,11 +23,11 @@ jobs:
     strategy:
       matrix:
         platform:
+#          - runner: ubuntu-latest
+#            target: x86_64
+#          - runner: ubuntu-latest
+#            target: x86
           - runner: ubuntu-latest
-            target: x86_64
-          - runner: ubuntu-latest
-            target: x86
-          - runner: ubuntu-latest # Добавляем aarch64
             target: aarch64
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,13 @@ jobs:
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
           sccache: 'true'
           manylinux: auto
-          before-script-linux: (apt-get update && apt-get install -y apt-utils && apt-get install -y pkg-config libssl-dev) || (yum install openssl openssl-devel -y)
+          before-script-linux: |
+            apt-get update
+            apt-get install -y apt-utils
+            dpkg --add-architecture arm64
+            apt-get update
+            apt-get install -y pkg-config:arm64 libssl-dev:arm64
+            || (yum install openssl openssl-devel -y)
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
