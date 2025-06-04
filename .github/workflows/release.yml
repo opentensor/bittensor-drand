@@ -65,12 +65,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev:arm64 pkg-config qemu-user-static binfmt-support
 
-      - name: Set OpenSSL env vars for aarch64
-        run: |
-          echo "OPENSSL_DIR=/usr/aarch64-linux-gnu" >> $GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=/usr/aarch64-linux-gnu/lib" >> $GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=/usr/aarch64-linux-gnu/include" >> $GITHUB_ENV
-
       - name: Build aarch64 wheels using maturin
         uses: PyO3/maturin-action@v1.44.0
         with:
@@ -78,6 +72,9 @@ jobs:
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
           manylinux: manylinux_2_28
           sccache: false
+          before-script-linux: |
+            yum update -y
+            yum install -y pkgconfig openssl-devel gcc-aarch64-linux-gnu
 
       - name: Upload built wheels
         uses: actions/upload-artifact@v4
