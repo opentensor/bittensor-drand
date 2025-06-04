@@ -37,6 +37,10 @@ jobs:
           python-version: "3.10"
       - name: Build wheels
         uses: docker/setup-qemu-action@v1
+      - name: Install cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
       - uses: PyO3/maturin-action@v1.44.0
         with:
           target: ${{ matrix.platform.target }}
