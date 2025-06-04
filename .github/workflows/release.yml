@@ -44,7 +44,8 @@ jobs:
           sccache: 'true'
           manylinux: manylinux_2_28
           before-script-linux: |
-            python3 -m ensurepip --upgrade
+            apt-get update
+            apt-get install -y python3-pip python3-setuptools python3-wheel
             python3 -m pip install --upgrade pip setuptools wheel
 #          before-script-linux: (apt-get update && apt-get install -y apt-utils && apt-get install -y pkg-config libssl-dev) || (yum install openssl openssl-devel -y)
 
