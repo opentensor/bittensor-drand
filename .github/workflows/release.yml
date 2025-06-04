@@ -23,10 +23,10 @@ jobs:
     strategy:
       matrix:
         platform:
-#          - runner: ubuntu-latest
-#            target: x86_64
-#          - runner: ubuntu-latest
-#            target: x86
+          - runner: ubuntu-latest
+            target: x86_64
+          - runner: ubuntu-latest
+            target: x86
           - runner: ubuntu-latest
             target: aarch64
     steps:
@@ -34,14 +34,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          architecture: ${{ matrix.platform.target }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1.44.0
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
+          args: --release --out dist --interpreter python3.10 python3.11 python3.12 python3.13
           sccache: 'true'
           manylinux: auto
+          before-script-linux: (apt-get update && apt-get install -y apt-utils && apt-get install -y pkg-config libssl-dev) || (yum install openssl openssl-devel -y)
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
