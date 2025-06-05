@@ -66,6 +66,8 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
 
       - uses: actions/setup-python@v5
         with:
@@ -73,16 +75,9 @@ jobs:
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1.44.0
-        env:
-          OPENSSL_DIR: "/usr/aarch64-linux-gnu"
-          OPENSSL_LIB_DIR: "/usr/aarch64-linux-gnu/lib"
-          OPENSSL_INCLUDE_DIR: "/usr/aarch64-linux-gnu/include"
-          OPENSSL_STATIC: "1"
-          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
-          sccache: 'true'
           manylinux: manylinux2014_aarch64
 
       - name: Upload wheels
