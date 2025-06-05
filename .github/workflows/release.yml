@@ -88,8 +88,7 @@ jobs:
             apt-get install -y \
               gcc-aarch64-linux-gnu \
               pkg-config \
-              libssl-dev \
-              libssl-dev:aarch64
+              libssl-dev
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
