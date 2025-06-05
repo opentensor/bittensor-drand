@@ -25,3 +25,6 @@ rand = "0.9.1"
 [features]
 default = ["extension-module"]
 extension-module = ["pyo3/extension-module"]
+
+[patch.crates-io]
+openssl = { version = "0.10", features = ["vendored"] }
