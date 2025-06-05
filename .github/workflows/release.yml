@@ -15,7 +15,7 @@ permissions:
 jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
-    env:
+#    env:
 #      OPENSSL_STATIC: "1"
 #      OPENSSL_NO_VENDOR: "0"
 #      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
