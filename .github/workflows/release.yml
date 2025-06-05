@@ -44,8 +44,8 @@ jobs:
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
           sccache: 'true'
           manylinux: auto
-          before-script-linux: |
-            yum install -y perl coreutils make gcc
+#          before-script-linux: |
+#            yum install -y perl coreutils make gcc
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
@@ -84,12 +84,12 @@ jobs:
           args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
           sccache: 'true'
           manylinux: auto
-          before-script-linux: |
-            apt-get update
-            apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              pkg-config \
-              libssl-dev
+#          before-script-linux: |
+#            apt-get update
+#            apt-get install -y \
+#              gcc-aarch64-linux-gnu \
+#              pkg-config \
+#              libssl-dev
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
