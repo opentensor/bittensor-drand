@@ -53,8 +53,11 @@ jobs:
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
-            apt-get update
-            get install -y apt-utils pkg-config libssl-dev ring
+            if [ "${{ matrix.platform.target }}" = "aarch64" ]; then
+              apt-get update
+              apt-get install -y pkg-config libssl-dev
+              export CFLAGS="-D__ARM_ARCH=8"
+            fi
 #          before-script-linux: (apt-get update && apt-get install -y apt-utils && apt-get install -y pkg-config libssl-dev) || (yum install openssl openssl-devel -y)
 
       - name: Upload wheels
