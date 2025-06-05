@@ -16,9 +16,9 @@ jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
     env:
-      OPENSSL_STATIC: "1"
-      OPENSSL_NO_VENDOR: "0"
-      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+#      OPENSSL_STATIC: "1"
+#      OPENSSL_NO_VENDOR: "0"
+#      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
 
     strategy:
       matrix:
