@@ -51,7 +51,7 @@ jobs:
 #          name: wheels-linux-${{ matrix.platform.target }}
 #          path: dist
 
-  linux:
+  linux-aarch64:
     runs-on: ${{ matrix.platform.runner }}
 
     strategy:
