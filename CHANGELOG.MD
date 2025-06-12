@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.1-rc.1 /2025-04-28
+## v0.5.1-rc.2 /2025-04-28
 
 ## What's Changed
 * Rename package to `bittensor-drand` by @basfroman in https://github.com/opentensor/bittensor-drand/pull/25
