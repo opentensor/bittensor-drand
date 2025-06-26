@@ -1,14 +1,6 @@
 # Changelog
 
-## v0.5.1 /2025-06-11
-
-## What's Changed
-* fix annotation by @basfroman in https://github.com/opentensor/bittensor-drand/pull/32
-* Add `arm` wheels by @basfroman in https://github.com/opentensor/bittensor-drand/pull/34
-
-**Full Changelog**: https://github.com/opentensor/bittensor-drand/compare/v0.5.0...v0.5.1
-
-## v0.5.0 /2025-04-28
+## v0.5.1-rc.1 /2025-04-28
 
 ## What's Changed
 * Rename package to `bittensor-drand` by @basfroman in https://github.com/opentensor/bittensor-drand/pull/25
