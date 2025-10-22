@@ -1,0 +1,42 @@
+name: Bittensor Drand Test
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - main
+      - staging
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  unit-tests:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install deps
+        run: uv sync --all-extras --dev
+
+      - name: Build wheel
+        run: uv run --active maturin develop
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --reruns 3
