@@ -1,8 +1,7 @@
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use codec::{Decode, Encode};
 
-use rand::rngs::OsRng;
-use rand::RngCore;
+use rand_core::{OsRng, RngCore};
 use serde::Deserialize;
 use sha2::Digest;
 use std::os::raw::c_char;
