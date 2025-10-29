@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.1 /2025-10-29
+* Updates PyO3 to handle py3.14 by @thewhaleking in https://github.com/opentensor/bittensor-drand/pull/52
+* Updates workflow to be able to use forks as well by @thewhaleking in https://github.com/opentensor/bittensor-drand/pull/51
+
+## New Contributors
+* @thewhaleking made their first contribution in https://github.com/opentensor/bittensor-drand/pull/52
+
+**Full Changelog**: https://github.com/opentensor/bittensor-drand/compare/v1.0.0...v1.0.1
+
 ## v1.0.0 /2025-08-07
 
 ## What's Changed

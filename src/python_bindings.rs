@@ -55,7 +55,7 @@ fn get_encrypted_commit(
     // matching the result
     match result {
         Ok((ciphertext, target_round)) => {
-            let py_bytes = PyBytes::new_bound(py, &ciphertext).into();
+            let py_bytes = PyBytes::new(py, &ciphertext).into();
             Ok((py_bytes, target_round))
         }
         Err(e) => Err(PyValueError::new_err(format!("{:?}", e))),
@@ -88,7 +88,7 @@ fn get_encrypted_commitment(
     // matching the result
     match result {
         Ok((ciphertext, target_round)) => {
-            let py_bytes = PyBytes::new_bound(py, &ciphertext).into();
+            let py_bytes = PyBytes::new(py, &ciphertext).into();
             Ok((py_bytes, target_round))
         }
         Err(e) => Err(PyValueError::new_err(format!("{:?}", e))),
@@ -144,7 +144,7 @@ fn encrypt(
     .encode();
 
     Ok((
-        PyBytes::new_bound(py, &encrypted_with_reveal_round).into(),
+        PyBytes::new(py, &encrypted_with_reveal_round).into(),
         reveal_round,
     ))
 }
@@ -197,7 +197,7 @@ fn decrypt(py: Python, encrypted_data: &[u8], no_errors: bool) -> PyResult<Optio
     let decoded_data = drand::decrypt_and_decompress(&user_data.encrypted_data, &signature_bytes)
         .map_err(|e| PyValueError::new_err(e))?;
 
-    Ok(Some(PyBytes::new_bound(py, &decoded_data).into()))
+    Ok(Some(PyBytes::new(py, &decoded_data).into()))
 }
 
 #[pymodule]
