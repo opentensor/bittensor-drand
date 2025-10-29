@@ -189,15 +189,12 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: uv sync --all-extras --dev
 
-      - name: Clone bittensor-drand repo
-        run: git clone https://github.com/opentensor/bittensor-drand.git
-
       - name: Checkout PR branch in bittensor-drand repo
-        working-directory: ${{ github.workspace }}/bittensor-drand
-        run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git checkout ${{ github.event.pull_request.head.ref }}
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: bittensor-drand
 
       - name: Build and install bittensor-drand repo package
         working-directory: ${{ github.workspace }}
