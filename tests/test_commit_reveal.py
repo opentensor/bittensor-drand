@@ -16,6 +16,7 @@ def test_get_encrypted_commits():
     netuid = 1
     reveal_period = 2
     block_time = 12
+    hotkey = bytes([1, 2, 3])
 
     start_time = int(time.time())
     ct_pybytes, reveal_round = get_encrypted_commit(
@@ -27,6 +28,7 @@ def test_get_encrypted_commits():
         netuid,
         reveal_period,
         block_time,
+        hotkey,
     )
 
     # Basic checks
@@ -54,6 +56,7 @@ def test_generate_commit_success():
     netuid = 100
     subnet_reveal_period_epochs = 2
     block_time = 12
+    hotkey = bytes([1, 2, 3])
 
     start_time = int(time.time())
     ct_pybytes, reveal_round = get_encrypted_commit(
@@ -65,6 +68,7 @@ def test_generate_commit_success():
         netuid,
         subnet_reveal_period_epochs,
         block_time,
+        hotkey,
     )
 
     assert ct_pybytes is not None and len(ct_pybytes) > 0, (
@@ -101,8 +105,7 @@ def test_generate_commit_success():
     )
 
 
-@pytest.mark.asyncio
-async def test_generate_commit_various_tempos():
+def test_generate_commit_various_tempos():
     NETUID = 1
     CURRENT_BLOCK = 100_000
     SUBNET_REVEAL_PERIOD_EPOCHS = 1
@@ -112,6 +115,7 @@ async def test_generate_commit_various_tempos():
     uids = [0]
     values = [100]
     version_key = 1
+    hotkey = bytes([1, 2, 3])
 
     for tempo in TEMPOS:
         start_time = int(time.time())
@@ -125,6 +129,7 @@ async def test_generate_commit_various_tempos():
             NETUID,
             SUBNET_REVEAL_PERIOD_EPOCHS,
             BLOCK_TIME,
+            hotkey
         )
 
         assert len(ct_pybytes) > 0, f"Ciphertext is empty for tempo {tempo}"

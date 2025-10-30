@@ -21,6 +21,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///     netuid (int): Subnet identifier.
 ///     subnet_reveal_period_epochs (int): Number of epochs to wait before decryption.
 ///     block_time (float, optional): Block time in seconds (default = 12.0).
+///     hotkey (bytes): The hotkey of a neuron-committer is represented as public_key bytes
 ///
 /// Returns:
 ///     Tuple[bytes, int]: A tuple containing:
