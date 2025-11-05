@@ -28,7 +28,33 @@ def test_encrypt_and_decrypt():
     assert decrypted is not None
     assert decrypted == data
 
-
+def test_encrypt_at_round_and_decrypt():
+    data = b"test data for specific round"
+    
+    # Get a round that's already revealed (in the past)
+    current_round = btcr.get_latest_round()
+    past_round = current_round - 100  # Use a round from the past
+    
+    # Encrypt at specific round
+    encrypted, returned_round = btcr.encrypt_at_round(data, past_round)
+    assert isinstance(encrypted, bytes)
+    assert returned_round == past_round
+    
+    # Should be able to decrypt immediately since the round is in the past
+    decrypted = btcr.decrypt(encrypted)
+    assert decrypted is not None
+    assert decrypted == data
+    
+    # Test with future round
+    future_round = current_round + 1000
+    encrypted_future, returned_future_round = btcr.encrypt_at_round(data, future_round)
+    assert isinstance(encrypted_future, bytes)
+    assert returned_future_round == future_round
+    
+    # Attempting to decrypt future round should fail or return None
+    decrypted_future = btcr.decrypt(encrypted_future, no_errors=True)
+    assert decrypted_future is None  # Can't decrypt yet
+    
 def test_get_encrypted_commitment():
     encrypted, round_ = btcr.get_encrypted_commitment("my_commitment", 1)
     assert isinstance(encrypted, bytes)

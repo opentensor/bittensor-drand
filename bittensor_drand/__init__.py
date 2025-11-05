@@ -4,6 +4,7 @@ from bittensor_drand.bittensor_drand import (
     get_encrypted_commit as _get_encrypted_commit,
     get_encrypted_commitment as _get_encrypted_commitment,
     encrypt as _encrypt,
+    encrypt_at_round as _encrypt_at_round,
     decrypt as _decrypt,
     get_latest_round as _get_latest_round,
 )
@@ -91,6 +92,22 @@ def encrypt(
         ValueError: If encryption fails.
     """
     return _encrypt(data, n_blocks, block_time)
+
+def encrypt_at_round(data: bytes, reveal_round: int) -> tuple[bytes, int]:
+    """Encrypts arbitrary binary data for a specific Drand reveal round.
+
+    Arguments:
+        data: The binary data to encrypt.
+        reveal_round: The specific Drand round number when decryption becomes possible.
+
+    Returns:
+        encrypted_data (bytes): Raw bytes of the encrypted data.
+        reveal_round (int): The Drand round number when data can be revealed (same as input).
+
+    Raises:
+        ValueError: If encryption fails.
+    """
+    return _encrypt_at_round(data, reveal_round)
 
 
 def decrypt(encrypted_data: bytes, no_errors: bool = True) -> Optional[bytes]:

@@ -149,6 +149,43 @@ fn encrypt(
     ))
 }
 
+/// Encrypts binary data for a specific Drand reveal round.
+///
+/// This method timelock-encrypts the provided binary `data` to be decryptable
+/// only when the specified Drand round is revealed. Unlike `encrypt()`, this
+/// function directly uses the provided round number without calculating it
+/// from block delays.
+///
+/// Args:
+///     data (bytes): Data to encrypt.
+///     reveal_round (int): The specific Drand round number when decryption becomes possible.
+///
+/// Returns:
+///     Tuple[bytes, int]: A tuple containing:
+///         - the encrypted payload
+///         - the Drand reveal round number (same as input)
+#[pyfunction]
+fn encrypt_at_round(
+    py: Python,
+    data: &[u8],
+    reveal_round: u64,
+) -> PyResult<(Py<PyBytes>, u64)> {
+    // Directly encrypt with the specified reveal round
+    let encrypted_data = drand::encrypt_and_compress(data, reveal_round)
+        .map_err(|e| PyValueError::new_err(format!("Encryption failed: {:?}", e)))?;
+
+    let encrypted_with_reveal_round = drand::UserData {
+        encrypted_data,
+        reveal_round,
+    }
+    .encode();
+
+    Ok((
+        PyBytes::new(py, &encrypted_with_reveal_round).into(),
+        reveal_round,
+    ))
+}
+
 /// Attempts to decrypt data previously encrypted with Drand timelock encryption.
 ///
 /// This function automatically extracts the reveal round from the encrypted message,
@@ -205,6 +242,7 @@ fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_encrypted_commit, m)?)?;
     m.add_function(wrap_pyfunction!(get_encrypted_commitment, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt, m)?)?;
+    m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;  // Add this line
     m.add_function(wrap_pyfunction!(decrypt, m)?)?;
     m.add_function(wrap_pyfunction!(get_latest_round_py, m)?)?;
     Ok(())
