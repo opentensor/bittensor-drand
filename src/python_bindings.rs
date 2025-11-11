@@ -237,13 +237,58 @@ fn decrypt(py: Python, encrypted_data: &[u8], no_errors: bool) -> PyResult<Optio
     Ok(Some(PyBytes::new(py, &decoded_data).into()))
 }
 
+/// Decrypts data using a provided Drand signature.
+///
+/// This function is useful when decrypting multiple ciphertexts for the same round,
+/// allowing you to fetch the signature once and reuse it, avoiding redundant API calls.
+///
+/// Args:
+///     encrypted_data (bytes): Data previously returned from encrypt functions.
+///     signature_hex (str): Hex-encoded Drand BLS signature for the reveal round.
+///
+/// Returns:
+///     bytes: Decrypted data.
+#[pyfunction]
+fn decrypt_with_signature(
+    py: Python,
+    encrypted_data: &[u8],
+    signature_hex: &str,
+) -> PyResult<Py<PyBytes>> {
+    let user_data = drand::UserData::decode(&mut &encrypted_data[..])
+        .map_err(|e| PyValueError::new_err(format!("Error deserializing data: {:?}", e)))?;
+
+    let signature_bytes = hex::decode(signature_hex)
+        .map_err(|e| PyValueError::new_err(format!("Invalid hex in signature: {:?}", e)))?;
+
+    let decoded_data = drand::decrypt_and_decompress(&user_data.encrypted_data, &signature_bytes)
+        .map_err(|e| PyValueError::new_err(e))?;
+
+    Ok(PyBytes::new(py, &decoded_data).into())
+}
+
+/// Fetches the Drand signature for a specific round.
+///
+/// Args:
+///     reveal_round (int): The Drand round number to fetch.
+///
+/// Returns:
+///     str: Hex-encoded BLS signature for the round.
+#[pyfunction]
+fn get_signature_for_round(reveal_round: u64) -> PyResult<String> {
+    drand::get_reveal_round_signature(Some(reveal_round), false)
+        .map_err(|e| PyValueError::new_err(e))?
+        .ok_or_else(|| PyValueError::new_err("Signature not available"))
+}
+
 #[pymodule]
 fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_encrypted_commit, m)?)?;
     m.add_function(wrap_pyfunction!(get_encrypted_commitment, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt, m)?)?;
-    m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;  // Add this line
+    m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;
     m.add_function(wrap_pyfunction!(decrypt, m)?)?;
+    m.add_function(wrap_pyfunction!(decrypt_with_signature, m)?)?;
+    m.add_function(wrap_pyfunction!(get_signature_for_round, m)?)?;
     m.add_function(wrap_pyfunction!(get_latest_round_py, m)?)?;
     Ok(())
 }
