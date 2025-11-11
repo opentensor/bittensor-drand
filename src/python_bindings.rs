@@ -242,7 +242,7 @@ fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_encrypted_commit, m)?)?;
     m.add_function(wrap_pyfunction!(get_encrypted_commitment, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt, m)?)?;
-    m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;  // Add this line
+    m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;
     m.add_function(wrap_pyfunction!(decrypt, m)?)?;
     m.add_function(wrap_pyfunction!(get_latest_round_py, m)?)?;
     Ok(())
