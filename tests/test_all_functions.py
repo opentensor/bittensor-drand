@@ -69,6 +69,8 @@ def test_get_encrypted_commit():
     current_block = 100
     netuid = 1
     subnet_reveal_period_epochs = 2
+    block_time = 12
+    hotkey = bytes([1, 2, 3])
 
     encrypted, round_ = btcr.get_encrypted_commit(
         uids,
@@ -78,6 +80,8 @@ def test_get_encrypted_commit():
         current_block,
         netuid,
         subnet_reveal_period_epochs,
+        block_time,
+        hotkey
     )
     assert isinstance(encrypted, bytes)
     assert isinstance(round_, int)
