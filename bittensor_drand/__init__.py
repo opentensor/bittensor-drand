@@ -150,10 +150,13 @@ def get_signature_for_round(reveal_round: int) -> str:
     """Fetches the Drand signature for a specific round.
     This is useful for batch decryption scenarios where you want to decrypt
     multiple ciphertexts for the same round without making redundant API calls.
+    
     Arguments:
         reveal_round: The Drand round number to fetch the signature for.
+    
     Returns:
         signature_hex (str): Hex-encoded BLS signature for the round.
+    
     Raises:
         ValueError: If the signature cannot be fetched or is not yet available.
     """
