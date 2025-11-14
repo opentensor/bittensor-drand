@@ -132,11 +132,14 @@ def decrypt_with_signature(encrypted_data: bytes, signature_hex: str) -> bytes:
     """Decrypts data using a provided Drand signature.
     This function is useful when decrypting multiple ciphertexts for the same round,
     allowing you to fetch the signature once and reuse it, avoiding redundant API calls.
+    
     Arguments:
         encrypted_data: The encrypted data to decrypt.
         signature_hex: Hex-encoded Drand BLS signature for the reveal round.
+    
     Returns:
         decrypted_data (bytes): The decrypted data.
+    
     Raises:
         ValueError: If decryption fails or signature is invalid.
     """
