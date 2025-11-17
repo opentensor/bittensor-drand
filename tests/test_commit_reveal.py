@@ -1,5 +1,5 @@
-import pytest
 import time
+
 from bittensor_drand import get_encrypted_commit
 
 SUBTENSOR_PULSE_DELAY = 24
