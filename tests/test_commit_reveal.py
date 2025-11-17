@@ -1,5 +1,5 @@
-import pytest
 import time
+
 from bittensor_drand import get_encrypted_commit
 
 SUBTENSOR_PULSE_DELAY = 24
@@ -129,7 +129,7 @@ def test_generate_commit_various_tempos():
             NETUID,
             SUBNET_REVEAL_PERIOD_EPOCHS,
             BLOCK_TIME,
-            hotkey
+            hotkey,
         )
 
         assert len(ct_pybytes) > 0, f"Ciphertext is empty for tempo {tempo}"
@@ -174,22 +174,24 @@ def compute_expected_reveal_round(
     current_epoch = block_with_offset // tempo_plus_one
 
     reveal_epoch = current_epoch + subnet_reveal_period_epochs
-    reveal_block_number = reveal_epoch * tempo_plus_one - netuid_plus_one
+    first_reveal_blk = reveal_epoch * tempo_plus_one - netuid_plus_one
 
-    blocks_until_reveal = max(reveal_block_number - current_block, 0)
-    time_until_reveal = blocks_until_reveal * block_time
+    # Rust adds SECURITY_BLOCK_OFFSET = 3
+    SECURITY_BLOCK_OFFSET = 3
+    target_ingest_blk = first_reveal_blk + SECURITY_BLOCK_OFFSET
 
-    while time_until_reveal < SUBTENSOR_PULSE_DELAY * PERIOD:
-        # If there's at least one block until the reveal, break early and don't force more lead time
-        if blocks_until_reveal > 0:
-            break
-        reveal_epoch += 1
-        reveal_block_number = reveal_epoch * tempo_plus_one - netuid_plus_one
-        blocks_until_reveal = max(reveal_block_number - current_block, 0)
-        time_until_reveal = blocks_until_reveal * block_time
+    blocks_until_ingest = max(target_ingest_blk - current_block, 0)
+    secs_until_ingest = blocks_until_ingest * block_time
 
-    reveal_time = now + time_until_reveal
-    reveal_round = (
-        (reveal_time - GENESIS_TIME + PERIOD - 1) // PERIOD
-    ) - SUBTENSOR_PULSE_DELAY
+    target_secs = now + secs_until_ingest
+
+    # Rust uses floor() and does NOT subtract SUBTENSOR_PULSE_DELAY
+    reveal_round = int((target_secs - GENESIS_TIME) / PERIOD)
+
+    if reveal_round < 1:
+        reveal_round = 1
+
+    reveal_time = target_secs
+    time_until_reveal = secs_until_ingest
+
     return reveal_round, reveal_time, time_until_reveal
