@@ -129,7 +129,7 @@ def test_generate_commit_various_tempos():
             NETUID,
             SUBNET_REVEAL_PERIOD_EPOCHS,
             BLOCK_TIME,
-            hotkey
+            hotkey,
         )
 
         assert len(ct_pybytes) > 0, f"Ciphertext is empty for tempo {tempo}"

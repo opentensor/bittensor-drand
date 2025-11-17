@@ -95,6 +95,7 @@ def encrypt(
     """
     return _encrypt(data, n_blocks, block_time)
 
+
 def encrypt_at_round(data: bytes, reveal_round: int) -> tuple[bytes, int]:
     """Encrypts arbitrary binary data for a specific Drand reveal round.
 
@@ -128,18 +129,19 @@ def decrypt(encrypted_data: bytes, no_errors: bool = True) -> Optional[bytes]:
     """
     return _decrypt(encrypted_data, no_errors)
 
+
 def decrypt_with_signature(encrypted_data: bytes, signature_hex: str) -> bytes:
     """Decrypts data using a provided Drand signature.
     This function is useful when decrypting multiple ciphertexts for the same round,
     allowing you to fetch the signature once and reuse it, avoiding redundant API calls.
-    
+
     Arguments:
         encrypted_data: The encrypted data to decrypt.
         signature_hex: Hex-encoded Drand BLS signature for the reveal round.
-    
+
     Returns:
         decrypted_data (bytes): The decrypted data.
-    
+
     Raises:
         ValueError: If decryption fails or signature is invalid.
     """
@@ -150,17 +152,18 @@ def get_signature_for_round(reveal_round: int) -> str:
     """Fetches the Drand signature for a specific round.
     This is useful for batch decryption scenarios where you want to decrypt
     multiple ciphertexts for the same round without making redundant API calls.
-    
+
     Arguments:
         reveal_round: The Drand round number to fetch the signature for.
-    
+
     Returns:
         signature_hex (str): Hex-encoded BLS signature for the round.
-    
+
     Raises:
         ValueError: If the signature cannot be fetched or is not yet available.
     """
     return _get_signature_for_round(reveal_round)
+
 
 def get_latest_round() -> int:
     """Gets the latest revealed Drand round number.
