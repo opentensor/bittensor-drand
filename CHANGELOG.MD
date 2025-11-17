@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.0 /2025-11-17
+
+## What's Changed
+* Add missing hotkey parameter to test functions by @Gimzou in https://github.com/opentensor/bittensor-drand/pull/48
+* Update release workflow by @basfroman in https://github.com/opentensor/bittensor-drand/pull/58
+* feat: add encrypt_at_round() for direct Drand round encryption by @ShubhamChndrvnshi in https://github.com/opentensor/bittensor-drand/pull/56
+* feat: add decrypt_with_signature() by @ShubhamChndrvnshi in https://github.com/opentensor/bittensor-drand/pull/59
+* Python 3.14 support, fix unit tests + move workflow to gh by @basfroman in https://github.com/opentensor/bittensor-drand/pull/60
+
+## New Contributors
+* @Gimzou made their first contribution in https://github.com/opentensor/bittensor-drand/pull/48
+* @ShubhamChndrvnshi made their first contribution in https://github.com/opentensor/bittensor-drand/pull/56
+
+**Full Changelog**: https://github.com/opentensor/bittensor-drand/compare/v1.0.1...v1.1.0
+
 ## v1.0.1 /2025-10-29
 * Updates PyO3 to handle py3.14 by @thewhaleking in https://github.com/opentensor/bittensor-drand/pull/52
 * Updates workflow to be able to use forks as well by @thewhaleking in https://github.com/opentensor/bittensor-drand/pull/51

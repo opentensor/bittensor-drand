@@ -47,7 +47,7 @@ jobs:
         uses: PyO3/maturin-action@v1.44.0
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
+          args: --release --out dist --interpreter python3.10 python3.11 python3.12 python3.13 python3.14
           sccache: 'true'
           manylinux: auto
           before-script-linux: |
@@ -69,9 +69,9 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64
-          - runner: macos-14
+          - runner: macos-latest
             target: aarch64
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
         uses: PyO3/maturin-action@v1.44.0
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12 python3.13
+          args: --release --out dist --interpreter python3.10 python3.11 python3.12 python3.13 python3
           sccache: 'true'
 
       - name: Upload wheels
