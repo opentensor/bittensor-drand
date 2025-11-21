@@ -9,6 +9,8 @@ from bittensor_drand.bittensor_drand import (
     decrypt_with_signature as _decrypt_with_signature,
     get_signature_for_round as _get_signature_for_round,
     get_latest_round as _get_latest_round,
+    encrypt_mlkem768 as _encrypt_mlkem768,
+    mlkem_kdf_id as _mlkem_kdf_id,
 )
 
 
@@ -175,3 +177,49 @@ def get_latest_round() -> int:
         ValueError: If fetching the latest round fails.
     """
     return _get_latest_round()
+
+
+def encrypt_mlkem768(pk_bytes: bytes, plaintext: bytes) -> bytes:
+    """Encrypts data using ML-KEM-768 + XChaCha20Poly1305.
+
+    This function encrypts plaintext using ML-KEM-768 key encapsulation followed by
+    XChaCha20Poly1305 authenticated encryption. The public key is rotated every block
+    and can be queried from the NextKey storage item.
+
+    Blob format: [u16 kem_len LE][kem_ct][nonce24][aead_ct]
+
+    Arguments:
+        pk_bytes: ML-KEM-768 public key bytes (from NextKey storage)
+        plaintext: Data to encrypt
+
+    Returns:
+        bytes: Encrypted blob
+
+    Raises:
+        ValueError: If encryption fails
+
+    Example:
+        ```python
+        from bittensor_drand import encrypt_mlkem768
+
+        # Get public key from NextKey storage
+        pk_bytes = get_next_key_from_storage(substrate, mev_pallet)
+
+        # Encrypt payload
+        payload = signer + nonce.to_bytes(4, "little") + scale_call
+        plaintext = payload + b"\\x01" + cold.sign(b"mev-shield:v1" + genesis + payload)
+        ciphertext = encrypt_mlkem768(pk_bytes, plaintext)
+        ```
+    """
+    return _encrypt_mlkem768(pk_bytes, plaintext)
+
+
+def mlkem_kdf_id() -> bytes:
+    """Returns the KDF identifier used by ML-KEM encryption.
+
+    Returns "v1" indicating direct use of shared secret (no HKDF).
+
+    Returns:
+        bytes: KDF identifier (b"v1")
+    """
+    return _mlkem_kdf_id()
