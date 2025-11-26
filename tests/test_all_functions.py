@@ -1,5 +1,6 @@
 import time
 
+import pytest
 import bittensor_drand as btcr
 
 
@@ -154,3 +155,27 @@ def test_get_encrypted_commit():
     )
     assert isinstance(encrypted, bytes)
     assert isinstance(round_, int)
+
+
+def test_encrypt_mlkem768():
+    """Test ML-KEM-768 encryption."""
+    try:
+        from ml_kem import Keypair, MlKem768Params
+
+        # Generate test keypair
+        keypair = Keypair.generate(MlKem768Params)
+        pk_bytes = bytes(keypair.public_key())
+        plaintext = b"test message"
+
+        ciphertext = btcr.encrypt_mlkem768(pk_bytes, plaintext)
+        assert isinstance(ciphertext, bytes)
+        assert len(ciphertext) > 0
+        # Verify blob format: [u16 kem_len][kem_ct][nonce24][aead_ct]
+        assert len(ciphertext) >= 2 + 24  # At least kem_len (2) + nonce (24)
+
+        # Test KDF ID
+        kdf_id = btcr.mlkem_kdf_id()
+        assert isinstance(kdf_id, bytes)
+        assert kdf_id == b"v1"
+    except ImportError:
+        pytest.skip("ml-kem Python package not available for testing")

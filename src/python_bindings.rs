@@ -281,6 +281,80 @@ fn get_signature_for_round(reveal_round: u64) -> PyResult<String> {
         .ok_or_else(|| PyValueError::new_err("Signature not available"))
 }
 
+/// Encrypts data using ML-KEM-768 + XChaCha20Poly1305
+///
+/// This function encrypts plaintext using ML-KEM-768 key encapsulation followed by
+/// XChaCha20Poly1305 authenticated encryption. The public key is rotated every block
+/// and can be queried from the NextKey storage item.
+///
+/// Blob format: [u16 kem_len LE][kem_ct][nonce24][aead_ct]
+///
+/// Args:
+///     pk_bytes (bytes): ML-KEM-768 public key bytes (from NextKey storage)
+///     plaintext (bytes): Data to encrypt
+///
+/// Returns:
+///     bytes: Encrypted blob
+///
+/// Raises:
+///     ValueError: If encryption fails
+#[pyfunction]
+fn encrypt_mlkem768(
+    py: Python,
+    pk_bytes: &[u8],
+    plaintext: &[u8],
+) -> PyResult<Py<PyBytes>> {
+    // Estimate max output size: kem_ct (~1500 bytes) + nonce (24) + aead_ct (plaintext + overhead)
+    let max_output_size = 2048 + plaintext.len() + 64; // Safe estimate
+    let mut output = vec![0u8; max_output_size];
+    let mut written = 0usize;
+
+    let result = crate::ffi::mlkem768_seal_blob(
+        pk_bytes.as_ptr(),
+        pk_bytes.len(),
+        plaintext.as_ptr(),
+        plaintext.len(),
+        output.as_mut_ptr(),
+        output.len(),
+        &mut written,
+    );
+
+    match result {
+        0 => {
+            output.truncate(written);
+            Ok(PyBytes::new(py, &output).into())
+        }
+        -1 => Err(PyValueError::new_err("Null pointer provided")),
+        -2 => Err(PyValueError::new_err("Failed to decode public key")),
+        -3 => Err(PyValueError::new_err("Encapsulation failed")),
+        -4 => Err(PyValueError::new_err("KEM ciphertext too long")),
+        -5 => Err(PyValueError::new_err("Invalid shared secret length")),
+        -6 => Err(PyValueError::new_err("AEAD encryption failed")),
+        -7 => Err(PyValueError::new_err("Output buffer too small")),
+        code => Err(PyValueError::new_err(format!("Unknown error code: {}", code))),
+    }
+}
+
+/// Returns the KDF identifier used by ML-KEM encryption
+///
+/// Returns "v1" indicating direct use of shared secret (no HKDF)
+///
+/// Returns:
+///     bytes: KDF identifier (b"v1")
+#[pyfunction]
+fn mlkem_kdf_id(py: Python) -> PyResult<Py<PyBytes>> {
+    let mut buf = vec![0u8; 10];
+    let result = crate::ffi::mlkemffi_kdf_id(buf.as_mut_ptr(), buf.len());
+    
+    match result {
+        n if n > 0 => {
+            buf.truncate(n as usize);
+            Ok(PyBytes::new(py, &buf).into())
+        }
+        _ => Err(PyValueError::new_err("Failed to get KDF ID")),
+    }
+}
+
 #[pymodule]
 fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_encrypted_commit, m)?)?;
@@ -291,5 +365,8 @@ fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(decrypt_with_signature, m)?)?;
     m.add_function(wrap_pyfunction!(get_signature_for_round, m)?)?;
     m.add_function(wrap_pyfunction!(get_latest_round_py, m)?)?;
+    // ML-KEM functions
+    m.add_function(wrap_pyfunction!(encrypt_mlkem768, m)?)?;
+    m.add_function(wrap_pyfunction!(mlkem_kdf_id, m)?)?;
     Ok(())
 }
