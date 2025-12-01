@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.0 /2025-12-01
+
+## What's Changed
+* Add `mlkem768` encryption support by @basfroman in https://github.com/opentensor/bittensor-drand/pull/63
+
+**Full Changelog**: https://github.com/opentensor/bittensor-drand/compare/v1.1.0...v1.2.0
+
 ## v1.1.0 /2025-11-17
 
 ## What's Changed
