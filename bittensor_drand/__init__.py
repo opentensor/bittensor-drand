@@ -219,4 +219,3 @@ def mlkem_kdf_id() -> bytes:
         bytes: KDF identifier (b"v1")
     """
     return _mlkem_kdf_id()
-
