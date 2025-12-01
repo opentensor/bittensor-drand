@@ -9,6 +9,8 @@ from bittensor_drand.bittensor_drand import (
     decrypt_with_signature as _decrypt_with_signature,
     get_signature_for_round as _get_signature_for_round,
     get_latest_round as _get_latest_round,
+    encrypt_mlkem768 as _encrypt_mlkem768,
+    mlkem_kdf_id as _mlkem_kdf_id,
 )
 
 
@@ -175,3 +177,45 @@ def get_latest_round() -> int:
         ValueError: If fetching the latest round fails.
     """
     return _get_latest_round()
+
+
+def encrypt_mlkem768(pk_bytes: bytes, plaintext: bytes) -> bytes:
+    """Encrypts data using ML-KEM-768 + XChaCha20Poly1305.
+
+    This function encrypts plaintext using ML-KEM-768 key encapsulation followed by XChaCha20Poly1305 authenticated
+    encryption. The public key is rotated every block and can be queried from the NextKey storage item.
+
+    Blob format: [u16 kem_len LE][kem_ct][nonce24][aead_ct]
+
+    Arguments:
+        pk_bytes: ML-KEM-768 public key bytes (from NextKey storage, 1184 bytes)
+        plaintext: Data to encrypt. For MEV Shield, this should be: payload_core + b"\\x01" + signature where
+            payload_core = signer_bytes (32B) + key_hash_bytes (32B) + SCALE(call)
+
+    Returns:
+        bytes: Encrypted blob
+
+    Raises:
+        ValueError: If encryption fails (invalid public key, buffer too small, etc.)
+    """
+    return _encrypt_mlkem768(pk_bytes, plaintext)
+
+
+def mlkem_kdf_id() -> bytes:
+    """Returns the KDF identifier used by ML-KEM encryption.
+
+    This function returns the KDF (Key Derivation Function) identifier "v1", which indicates that the AEAD key is
+    derived directly from the ML-KEM shared secret without any additional HKDF or hashing steps.
+
+    The "v1" KDF means:
+        - AEAD key = raw ML-KEM shared secret (32 bytes)
+        - No HKDF or additional hashing applied
+        - AAD (Additional Authenticated Data) = empty
+
+    This identifier is used to verify compatibility between the encryption library and the decryption logic on the
+    blockchain node.
+
+    Returns:
+        bytes: KDF identifier (b"v1")
+    """
+    return _mlkem_kdf_id()
