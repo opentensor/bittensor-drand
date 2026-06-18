@@ -6,54 +6,61 @@ use pyo3::types::PyBytes;
 use pyo3::{pyfunction, pymodule, wrap_pyfunction, Bound, PyResult, Python};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Returns a timelock-encrypted commitment and its corresponding Drand reveal round.
+/// Returns a timelock-encrypted commitment using the stateful epoch model (v2).
 ///
-/// This function is used to generate an encrypted commitment based on UID weights and
-/// subnet reveal parameters. The commitment will be decryptable only after a calculated
-/// Drand round based on `tempo`, `current_block`, and `subnet_reveal_period_epochs`.
+/// Builds an internal ``EpochScheduleState`` from the provided scalar kwargs and
+/// simulates the chain's block pipeline to find the reveal block.
 ///
 /// Args:
 ///     uids (List[int]): List of UID integers.
-///     weights (List[int]): Corresponding list of weight values (same length as `uids`).
+///     weights (List[int]): Corresponding list of weight values (same length as ``uids``).
 ///     version_key (int): A version identifier for this commitment.
-///     tempo (int): Block interval for the subnet (tempo parameter).
-///     current_block (int): The current block number in the chain.
-///     netuid (int): Subnet identifier.
-///     subnet_reveal_period_epochs (int): Number of epochs to wait before decryption.
-///     block_time (float, optional): Block time in seconds (default = 12.0).
-///     hotkey (bytes): The hotkey of a neuron-committer is represented as public_key bytes
+///     last_epoch_block (int): Block at which the last epoch ran.
+///     pending_epoch_at (int): Pending owner-triggered epoch block (0 if none).
+///     subnet_epoch_index (int): Monotonic epoch counter.
+///     tempo (int): Epoch duration in blocks.
+///     blocks_since_last_step (int): Blocks since last step for the subnet.
+///     current_block (int): Chain head block number.
+///     subnet_reveal_period_epochs (int): Number of epochs before reveal.
+///     block_time (float): Block time in seconds.
+///     hotkey (bytes): Committer hotkey public key bytes.
 ///
 /// Returns:
-///     Tuple[bytes, int]: A tuple containing:
-///         - the encrypted commitment (as bytes)
-///         - the reveal round number (int) when it can be decrypted.
+///     Tuple[bytes, int]: encrypted commitment and reveal round.
 #[pyfunction]
-#[pyo3(signature = (uids, weights, version_key, tempo, current_block, netuid, subnet_reveal_period_epochs, block_time, hotkey))]
-fn get_encrypted_commit(
+#[pyo3(signature = (uids, weights, version_key, last_epoch_block, pending_epoch_at, subnet_epoch_index, tempo, blocks_since_last_step, current_block, subnet_reveal_period_epochs, block_time, hotkey))]
+fn get_encrypted_commit_v2(
     py: Python,
     uids: Vec<u16>,
     weights: Vec<u16>,
     version_key: u64,
-    tempo: u64,
+    last_epoch_block: u64,
+    pending_epoch_at: u64,
+    subnet_epoch_index: u64,
+    tempo: u16,
+    blocks_since_last_step: u64,
     current_block: u64,
-    netuid: u16,
     subnet_reveal_period_epochs: u64,
     block_time: f64,
     hotkey: Vec<u8>,
 ) -> PyResult<(Py<PyBytes>, u64)> {
-    // create runtime to make async call
-    let result = drand::generate_commit(
+    let state = crate::epoch_schedule::EpochScheduleState {
+        last_epoch_block,
+        pending_epoch_at,
+        subnet_epoch_index,
+        tempo,
+        blocks_since_last_step,
+        current_block,
+    };
+    let result = drand::generate_commit_v2(
         uids,
         weights,
         version_key,
-        tempo,
-        current_block,
-        netuid,
+        state,
         subnet_reveal_period_epochs,
         block_time,
         hotkey,
     );
-    // matching the result
     match result {
         Ok((ciphertext, target_round)) => {
             let py_bytes = PyBytes::new(py, &ciphertext).into();
@@ -132,8 +139,8 @@ fn encrypt(
         .map_err(|e| PyValueError::new_err(format!("SystemTime error: {:?}", e)))?
         .as_secs_f64();
 
-    let reveal_timestamp = (n_blocks as f64 * block_time + now).ceil() as u64 - drand::GENESIS_TIME;
-    let reveal_round = reveal_timestamp / drand::DRAND_PERIOD;
+    let reveal_timestamp = (n_blocks as f64 * block_time + now).ceil() as u64 - crate::constants::GENESIS_TIME;
+    let reveal_round = reveal_timestamp / crate::constants::DRAND_PERIOD;
 
     let encrypted_data = drand::encrypt_and_compress(data, reveal_round)
         .map_err(|e| PyValueError::new_err(format!("Encryption failed: {:?}", e)))?;
@@ -193,7 +200,7 @@ fn encrypt_at_round(
 /// fetches the corresponding Drand signature (if available), and decrypts the message.
 ///
 /// Args:
-///     encrypted_data (bytes): Data previously returned from `encrypt` or `get_encrypted_commit`.
+///     encrypted_data (bytes): Data previously returned from `encrypt` or `get_encrypted_commit_v2`.
 ///     no_errors (bool, optional): If True, suppresses errors and returns None instead (default = True).
 ///
 /// Returns:
@@ -362,7 +369,7 @@ fn mlkem_kdf_id(py: Python) -> PyResult<Py<PyBytes>> {
 
 #[pymodule]
 fn bittensor_drand(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(get_encrypted_commit, m)?)?;
+    m.add_function(wrap_pyfunction!(get_encrypted_commit_v2, m)?)?;
     m.add_function(wrap_pyfunction!(get_encrypted_commitment, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt, m)?)?;
     m.add_function(wrap_pyfunction!(encrypt_at_round, m)?)?;

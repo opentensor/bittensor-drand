@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define SUBTENSOR_PULSE_DELAY 24
-
 #define GENESIS_TIME 1692803367
 
 #define DRAND_PERIOD 3
@@ -49,15 +47,20 @@ struct CRByteBuffer cr_encrypt_commitment(const uint8_t *data_ptr,
                                           uint64_t *round_out,
                                           char **err_out);
 
-struct CRByteBuffer cr_generate_commit(const uint16_t *uids_ptr,
-                                       uintptr_t uids_len,
-                                       const uint16_t *vals_ptr,
-                                       uintptr_t vals_len,
-                                       uint64_t version_key,
-                                       uint64_t tempo,
-                                       uint64_t current_block,
-                                       uint16_t netuid,
-                                       uint64_t subnet_reveal_epochs,
-                                       double block_time,
-                                       uint64_t *round_out,
-                                       char **err_out);
+struct CRByteBuffer cr_generate_commit_v2(const uint16_t *uids_ptr,
+                                          uintptr_t uids_len,
+                                          const uint16_t *vals_ptr,
+                                          uintptr_t vals_len,
+                                          uint64_t version_key,
+                                          uint64_t last_epoch_block,
+                                          uint64_t pending_epoch_at,
+                                          uint64_t subnet_epoch_index,
+                                          uint16_t tempo,
+                                          uint64_t blocks_since_last_step,
+                                          uint64_t current_block,
+                                          uint64_t subnet_reveal_epochs,
+                                          double block_time,
+                                          const uint8_t *hotkey_ptr,
+                                          uintptr_t hotkey_len,
+                                          uint64_t *round_out,
+                                          char **err_out);
