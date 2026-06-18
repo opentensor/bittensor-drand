@@ -2,7 +2,7 @@
 name = "bittensor-drand"
 # version is read from Cargo.toml by maturin
 dynamic = ["version"]
-description = ""
+description = "Rust-backed Python library for generating timelock-encrypted weight commitments for Bittensor's commit-reveal mechanism using drand randomness."
 readme = "README.md"
 license = {file = "LICENSE"}
 keywords = ["substrate", "scale", "codec", "bittensor", "commit reveal", "drand", "TLE"]

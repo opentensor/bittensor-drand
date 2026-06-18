@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.0.0 /2026-18-06
+
+## What's Changed
+* Bump rand from 0.8.5 to 0.8.6 by @dependabot[bot] in https://github.com/latent-to/bittensor-drand/pull/70
+* Dynamic tempo support by @basfroman in https://github.com/latent-to/bittensor-drand/pull/71
+
+**Full Changelog**: https://github.com/latent-to/bittensor-drand/compare/v1.3.0...v.2.0.0
+
 ## v1.3.0 /2026-19-02
 
 ## What's Changed
