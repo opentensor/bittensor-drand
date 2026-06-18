@@ -1,6 +1,7 @@
 [project]
 name = "bittensor-drand"
-version = "1.3.0"
+# version is read from Cargo.toml by maturin
+dynamic = ["version"]
 description = ""
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -13,7 +14,7 @@ authors = [
   {name = "Roman Chkhaidze", email = "r@latent.to"},
 ]
 maintainers = [
-  {name = "Cortex Team", email = "cortex@opentensor.dev"},
+  {name = "Cortex Team", email = "cortex@latent.to"},
 ]
 classifiers = [
         "Development Status :: 5 - Production/Stable",

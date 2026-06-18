@@ -1,7 +1,7 @@
 from typing import Union, Optional
 
 from bittensor_drand.bittensor_drand import (
-    get_encrypted_commit as _get_encrypted_commit,
+    get_encrypted_commit_v2 as _get_encrypted_commit_v2,
     get_encrypted_commitment as _get_encrypted_commitment,
     encrypt as _encrypt,
     encrypt_at_round as _encrypt_at_round,
@@ -14,44 +14,53 @@ from bittensor_drand.bittensor_drand import (
 )
 
 
-def get_encrypted_commit(
+def get_encrypted_commit_v2(
     uids: list[int],
     weights: list[int],
     version_key: int,
+    last_epoch_block: int,
+    pending_epoch_at: int,
+    subnet_epoch_index: int,
     tempo: int,
+    blocks_since_last_step: int,
     current_block: int,
-    netuid: int,
     subnet_reveal_period_epochs: int,
     block_time: Union[int, float],
     hotkey: bytes,
 ) -> tuple[bytes, int]:
-    """Returns encrypted commit and target round for `commit_crv3_weights` extrinsic.
+    """Returns encrypted commit and target round using the stateful epoch model (v2).
 
     Arguments:
         uids: The uids to commit.
         weights: The weights associated with the uids.
-        version_key: The version key to use for committing and revealing. Default is `bittensor.core.settings.version_as_int`.
-        tempo: Number of blocks in one epoch.
-        current_block: The current block number in the network.
-        netuid: The network unique identifier (NetUID) for the subnet.
-        subnet_reveal_period_epochs: Number of epochs after which the reveal will be performed. Corresponds to the hyperparameter `commit_reveal_weights_interval` of the subnet. In epochs.
-        block_time: Amount of time in seconds for one block. Defaults to 12 seconds.
-        hotkey: The hotkey of a neuron-committer is represented as public_key bytes (wallet.hotkey.public_key).
+        version_key: The version key to use for committing and revealing.
+        last_epoch_block: Block at which the last epoch ran for this subnet.
+        pending_epoch_at: Pending owner-triggered epoch block (0 if none).
+        subnet_epoch_index: Monotonic epoch counter for the subnet.
+        tempo: Epoch duration in blocks.
+        blocks_since_last_step: Blocks since the last step for the subnet.
+        current_block: Chain head block number.
+        subnet_reveal_period_epochs: Number of epochs before reveal.
+        block_time: Amount of time in seconds for one block.
+        hotkey: Committer hotkey public key bytes (wallet.hotkey.public_key).
 
     Returns:
-        commit (bytes): Raw bytes of the encrypted and compressed uids & weights values for setting weights.
-        target_round (int): Drand round number when weights have to be revealed. Based on Drand Quicknet network.
+        commit (bytes): Encrypted and compressed uids & weights payload.
+        target_round (int): Drand round number when weights can be revealed.
 
     Raises:
         ValueError: If the input parameters are invalid or encryption fails.
     """
-    return _get_encrypted_commit(
+    return _get_encrypted_commit_v2(
         uids,
         weights,
         version_key,
+        last_epoch_block,
+        pending_epoch_at,
+        subnet_epoch_index,
         tempo,
+        blocks_since_last_step,
         current_block,
-        netuid,
         subnet_reveal_period_epochs,
         block_time,
         hotkey,
@@ -134,8 +143,6 @@ def decrypt(encrypted_data: bytes, no_errors: bool = True) -> Optional[bytes]:
 
 def decrypt_with_signature(encrypted_data: bytes, signature_hex: str) -> bytes:
     """Decrypts data using a provided Drand signature.
-    This function is useful when decrypting multiple ciphertexts for the same round,
-    allowing you to fetch the signature once and reuse it, avoiding redundant API calls.
 
     Arguments:
         encrypted_data: The encrypted data to decrypt.
@@ -152,8 +159,6 @@ def decrypt_with_signature(encrypted_data: bytes, signature_hex: str) -> bytes:
 
 def get_signature_for_round(reveal_round: int) -> str:
     """Fetches the Drand signature for a specific round.
-    This is useful for batch decryption scenarios where you want to decrypt
-    multiple ciphertexts for the same round without making redundant API calls.
 
     Arguments:
         reveal_round: The Drand round number to fetch the signature for.
@@ -182,17 +187,10 @@ def get_latest_round() -> int:
 def encrypt_mlkem768(pk_bytes: bytes, plaintext: bytes, include_key_hash: bool = False) -> bytes:
     """Encrypts data using ML-KEM-768 + XChaCha20Poly1305.
 
-    This function encrypts plaintext using ML-KEM-768 key encapsulation followed by XChaCha20Poly1305 authenticated
-    encryption. The public key is rotated every block and can be queried from the NextKey storage item.
-
-    Blob format (include_key_hash=False): [u16 kem_len LE][kem_ct][nonce24][aead_ct]
-    Blob format (include_key_hash=True):  [key_hash(16)][u16 kem_len LE][kem_ct][nonce24][aead_ct]
-
     Arguments:
         pk_bytes: ML-KEM-768 public key bytes (from NextKey storage, 1184 bytes)
         plaintext: Data to encrypt.
         include_key_hash: If True, prepends the twox_128 hash of pk_bytes (16 bytes) to the output.
-            Required for the MEV Shield wire format (pallet-shield v2).
 
     Returns:
         bytes: Encrypted blob
@@ -205,17 +203,6 @@ def encrypt_mlkem768(pk_bytes: bytes, plaintext: bytes, include_key_hash: bool =
 
 def mlkem_kdf_id() -> bytes:
     """Returns the KDF identifier used by ML-KEM encryption.
-
-    This function returns the KDF (Key Derivation Function) identifier "v1", which indicates that the AEAD key is
-    derived directly from the ML-KEM shared secret without any additional HKDF or hashing steps.
-
-    The "v1" KDF means:
-        - AEAD key = raw ML-KEM shared secret (32 bytes)
-        - No HKDF or additional hashing applied
-        - AAD (Additional Authenticated Data) = empty
-
-    This identifier is used to verify compatibility between the encryption library and the decryption logic on the
-    blockchain node.
 
     Returns:
         bytes: KDF identifier (b"v1")

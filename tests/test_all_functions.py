@@ -131,30 +131,29 @@ def test_get_encrypted_commitment():
     assert isinstance(round_, int)
 
 
-def test_get_encrypted_commit():
+def test_get_encrypted_commit_v2():
+    # cycle_reset row from src/epoch_schedule_vectors.rs
     uids = [0, 1]
     weights = [100, 200]
     version_key = 1
-    tempo = 10
-    current_block = 100
-    netuid = 1
-    subnet_reveal_period_epochs = 2
-    block_time = 12
-    hotkey = bytes([1, 2, 3])
-
-    encrypted, round_ = btcr.get_encrypted_commit(
+    encrypted, round_ = btcr.get_encrypted_commit_v2(
         uids,
         weights,
         version_key,
-        tempo,
-        current_block,
-        netuid,
-        subnet_reveal_period_epochs,
-        block_time,
-        hotkey,
+        last_epoch_block=10,
+        pending_epoch_at=0,
+        subnet_epoch_index=0,
+        tempo=50,
+        blocks_since_last_step=0,
+        current_block=10,
+        subnet_reveal_period_epochs=1,
+        block_time=12.0,
+        hotkey=bytes([1, 2, 3]),
     )
     assert isinstance(encrypted, bytes)
+    assert len(encrypted) > 0
     assert isinstance(round_, int)
+    assert round_ > 0
 
 
 # ML-KEM-768 test key (1184 bytes) - valid ML-KEM-768 public key

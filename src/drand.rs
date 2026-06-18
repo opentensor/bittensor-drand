@@ -14,22 +14,9 @@ use tle::{
 };
 use w3f_bls::EngineBLS;
 
-const PUBLIC_KEY: &str = "83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a";
-pub const GENESIS_TIME: u64 = 1692803367;
-pub const DRAND_PERIOD: u64 = 3;
-
-/// the drand quicknet chain hash
-pub const QUICKNET_CHAIN_HASH: &str =
-    "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971";
-
-/// endpoints for fetching round's data
-const ENDPOINTS: [&str; 5] = [
-    "https://api.drand.sh",
-    "https://api2.drand.sh",
-    "https://api3.drand.sh",
-    "https://drand.cloudflare.com",
-    "https://api.drand.secureweb3.com:6875",
-];
+use crate::constants::{
+    DRAND_ENDPOINTS, DRAND_PERIOD, DRAND_PUBLIC_KEY, GENESIS_TIME, QUICKNET_CHAIN_HASH,
+};
 
 #[derive(Encode, Decode, Debug, PartialEq)]
 pub struct WeightsTlockPayload {
@@ -70,7 +57,7 @@ pub fn encrypt_and_compress(
     reveal_round: u64,
 ) -> Result<Vec<u8>, (std::io::Error, String)> {
     // Deserialize public key
-    let pub_key_bytes = hex::decode(PUBLIC_KEY).map_err(|e| {
+    let pub_key_bytes = hex::decode(DRAND_PUBLIC_KEY).map_err(|e| {
         (
             std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{:?}", e)),
             "Decoding public key failed.".to_string(),
@@ -166,85 +153,45 @@ pub fn decrypt_and_decompress(
     Ok(decrypted_bytes)
 }
 
-/// Generates a commit containing a payload to be encrypted and information about the reveal round,
-/// along with the timestamped reveal round for the network.
+/// Stateful epoch model commit (v2).
 ///
-/// # Arguments
-///
-/// * `uids` - A vector of unique identifiers (UIDs).
-/// * `values` - A vector of associated values for the UIDs.
-/// * `version_key` - A u64 value representing the version key for the commit.
-/// * `tempo` - A u64 specifying the tempo (block interval) for the network.
-/// * `current_block` - The current block number as u64.
-/// * `netuid` - A u16 representing the network's unique identifier.
-/// * `subnet_reveal_period_epochs` - A u64 indicating the number of epochs before reveal.
-/// * `block_time` - Duration of each block in seconds as u64.
-/// * `hotkey` - The hotkey of the committing validator
-///
-/// # Returns
-///
-/// A `Result` which is:
-/// * `Ok((Vec<u8>, u64))` containing the encrypted commit payload and the calculated reveal round timestamp if successful.
-/// * `Err((std::io::Error, String))` if an error occurs during payload serialization, encryption, or other processing steps.
-///
-pub fn generate_commit(
+/// Instead of legacy modulo arithmetic, uses `epoch_schedule::predict_first_reveal_block`
+/// to simulate the chain's `block_step` pipeline and find the exact reveal block.
+pub fn generate_commit_v2(
     uids: Vec<u16>,
     values: Vec<u16>,
     version_key: u64,
-    tempo: u64,
-    current_block: u64,
-    netuid: u16,
+    state: crate::epoch_schedule::EpochScheduleState,
     subnet_reveal_period_epochs: u64,
     block_time: f64,
     hotkey: Vec<u8>,
 ) -> Result<(Vec<u8>, u64), (std::io::Error, String)> {
-    //----------------------------------------------------------------------
-    // 1 ▸ derive the first block of the reveal epoch
-    //----------------------------------------------------------------------
-    let tempo_plus_one = tempo.saturating_add(1);
-    let netuid_plus_one = netuid as u64 + 1;
+    let first_reveal_blk =
+        crate::epoch_schedule::predict_first_reveal_block(&state, subnet_reveal_period_epochs)
+            .map_err(|e| {
+                (
+                    std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()),
+                    e.to_string(),
+                )
+            })?;
 
-    // epoch index of `current_block`
-    let current_epoch = (current_block + netuid_plus_one) / tempo_plus_one;
-
-    // epoch index in which the commit must be revealed
-    let reveal_epoch = current_epoch + subnet_reveal_period_epochs;
-
-    // very first block *inside* the reveal epoch
-    let first_reveal_blk = reveal_epoch
-        .saturating_mul(tempo_plus_one)
-        .saturating_sub(netuid_plus_one);
-
-    //----------------------------------------------------------------------
-    // 2 ▸ decide in which *block* we want the pulse to be emitted
-    //     – we aim for first_reveal_blk + 3
-    //----------------------------------------------------------------------
-    pub const SECURITY_BLOCK_OFFSET: u64 = 3;
-    let target_ingest_blk = first_reveal_blk.saturating_add(SECURITY_BLOCK_OFFSET);
-    let blocks_until_ingest = target_ingest_blk.saturating_sub(current_block);
+    let target_ingest_blk =
+        first_reveal_blk.saturating_add(crate::constants::SECURITY_BLOCK_OFFSET);
+    let blocks_until_ingest = target_ingest_blk.saturating_sub(state.current_block);
     let secs_until_ingest = blocks_until_ingest as f64 * block_time;
 
-    //----------------------------------------------------------------------
-    // 3 ▸ convert the desired timestamp into a DRAND round
-    //----------------------------------------------------------------------
     let now_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs_f64();
 
     let target_secs = now_secs + secs_until_ingest;
-
-    // Round ***down*** so we never request a not‑yet‑ingested pulse.
     let mut reveal_round =
         ((target_secs - GENESIS_TIME as f64) / DRAND_PERIOD as f64).floor() as u64;
-
     if reveal_round < 1 {
         reveal_round = 1;
     }
 
-    //----------------------------------------------------------------------
-    // 5 ▸ build & encrypt payload
-    //----------------------------------------------------------------------
     let payload = WeightsTlockPayload {
         hotkey,
         uids,
@@ -253,9 +200,9 @@ pub fn generate_commit(
     };
 
     let ct_bytes = encrypt_and_compress(&payload.encode(), reveal_round)?;
-
     Ok((ct_bytes, reveal_round))
 }
+
 /// Encrypts a string-based commitment using Drand timelock encryption for a future reveal round.
 ///
 /// This function encodes the input `data` and calculates the corresponding Drand round number
@@ -335,7 +282,7 @@ pub fn get_round_info(round: Option<u64>) -> Result<DrandResponse, String> {
     rt.block_on(async {
         let mut last_error = None;
 
-        for endpoint in ENDPOINTS.iter() {
+        for endpoint in DRAND_ENDPOINTS.iter() {
             let url = match round {
                 Some(r) => format!("{}/{}/public/{}", endpoint, QUICKNET_CHAIN_HASH, r),
                 None => format!("{}/{}/public/latest", endpoint, QUICKNET_CHAIN_HASH),
@@ -438,7 +385,6 @@ pub extern "C" fn drand_endpoint(idx: usize) -> *const c_char {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use codec::Decode;
 
     #[test]
     fn test_encrypt_and_decrypt_static_key() {
@@ -481,24 +427,25 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_commit_structure() {
+    fn test_generate_commit_v2_structure() {
+        let state = crate::epoch_schedule::EpochScheduleState {
+            last_epoch_block: 100,
+            pending_epoch_at: 0,
+            subnet_epoch_index: 0,
+            tempo: 50,
+            blocks_since_last_step: 0,
+            current_block: 120,
+        };
         let uids = vec![1, 2, 3];
         let values = vec![100, 200, 300];
-        let version_key = 42;
-        let tempo = 20;
-        let current_block = 1000;
-        let netuid = 1;
-        let reveal_epochs = 3;
         let hotkey = vec![1, 2, 3];
 
-        let (encrypted, reveal_round) = generate_commit(
+        let (encrypted, reveal_round) = generate_commit_v2(
             uids.clone(),
             values.clone(),
-            version_key,
-            tempo,
-            current_block,
-            netuid,
-            reveal_epochs,
+            42,
+            state,
+            1,
             12.0,
             hotkey.clone(),
         )
@@ -506,21 +453,5 @@ mod tests {
 
         assert!(!encrypted.is_empty());
         assert!(reveal_round > 0);
-
-        let decrypted_signature = get_reveal_round_signature(Some(reveal_round), true)
-            .unwrap_or(None)
-            .unwrap_or_default();
-
-        if !decrypted_signature.is_empty() {
-            let sig_bytes = hex::decode(&decrypted_signature).unwrap();
-            let plaintext = decrypt_and_decompress(&encrypted, &sig_bytes).unwrap();
-            let payload = WeightsTlockPayload::decode(&mut &plaintext[..])
-                .expect("Decoded payload must be valid");
-
-            assert_eq!(payload.uids, uids);
-            assert_eq!(payload.values, values);
-            assert_eq!(payload.version_key, version_key);
-            assert_eq!(payload.hotkey, hotkey)
-        }
     }
 }

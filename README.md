@@ -1,150 +1,225 @@
-# Usage
-Python package `bittensor_drand` has one function.
+# bittensor-drand
+
+Drand timelock encryption for Bittensor commit-reveal weights and general-purpose commitments. Rust core with Python bindings via PyO3.
+
+## What's new in 2.0
+
+- **`get_encrypted_commit` is replaced by `get_encrypted_commit_v2`**. The old modulo-based epoch math (`(block + netuid + 1) / (tempo + 1)`) is gone. The chain now uses a stateful epoch counter (`SubnetEpochIndex`), owner-triggered pending epochs, and configurable tempo. The new function simulates the chain's `block_step` pipeline to predict the exact reveal block.
+- **Breaking change**: `get_encrypted_commit_v2` requires epoch schedule state instead of `tempo + current_block + netuid`. The SDK (`bittensor>=11.0.0`) provides this via `subtensor.get_epoch_schedule_state(netuid)`.
+- Added `encrypt_mlkem768` and `mlkem_kdf_id` for ML-KEM-768 + XChaCha20Poly1305 encryption.
+
+## Quick start
 
 ```python
-from bittensor_drand import get_encrypted_commit
+from bittensor_drand import get_encrypted_commit_v2
 ```
 
-To test the function in your terminal:
-1. Spin up a local subtensor branch which includes CR3
-2. Create a subnet with netuid 1 (or replace the netuid with the one you create)
+## Installation
+
 ```bash
-mkdir test
-cd test
+pip install bittensor-drand
+```
+
+For development (build from source):
+
+```bash
+git clone https://github.com/opentensor/bittensor-drand.git
+cd bittensor-drand
 python3 -m venv venv
 . venv/bin/activate
-pip install maturin bittensor ipython
-cd ..
-
+pip install maturin bittensor
 maturin develop
-ipython
-
 ```
 
-then copy-past to ipython
+## Usage: commit-reveal weights
+
+### Using the SDK (recommended)
+
+The Bittensor SDK handles all the epoch state plumbing internally. You just call `set_weights`:
+
 ```python
-import numpy as np
-import bittensor_drand as crv3
-from bittensor.utils.weight_utils import convert_weights_and_uids_for_emit
 import bittensor as bt
 
-uids = [1, 3]
-weights = [0.3, 0.7]
-version_key = 843000
+sub = bt.Subtensor("local")  # or "finney" for mainnet
+wallet = bt.Wallet()
+
+result, message = sub.set_weights(
+    wallet=wallet,
+    netuid=1,
+    uids=[0, 1, 2],
+    weights=[0.5, 0.3, 0.2],
+    wait_for_inclusion=True,
+    wait_for_finalization=True,
+)
+print(f"Success: {result}, message: {message}")
+```
+
+### Using `bittensor_drand` directly
+
+If you need lower-level control (custom clients, miners, tooling):
+
+```python
+import bittensor as bt
+from bittensor_drand import get_encrypted_commit_v2
+
+sub = bt.Subtensor("local")
 netuid = 1
+current_block = sub.get_current_block()
 
-subtensor = bt.Subtensor("local")
+# Fetch epoch schedule state from chain
+schedule = sub.get_epoch_schedule_state(netuid, block=current_block)
+reveal_period = sub.get_subnet_reveal_period_epochs(netuid=netuid)
 
-subnet_reveal_period_epochs = subtensor.get_subnet_reveal_period_epochs(
-        netuid=netuid
-    )
-tempo = subtensor.get_subnet_hyperparameters(netuid).tempo
-current_block = subtensor.get_current_block()
+uids = [1, 3]
+weights = [100, 200]  # u16 values after convert_weights_and_uids_for_emit
+version_key = 843000
+wallet = bt.Wallet()
 
-if isinstance(uids, list):
-    uids = np.array(uids, dtype=np.int64)
-if isinstance(weights, list):
-    weights = np.array(weights, dtype=np.float32)
+commit_bytes, reveal_round = get_encrypted_commit_v2(
+    uids=uids,
+    weights=weights,
+    version_key=version_key,
+    last_epoch_block=schedule.last_epoch_block,
+    pending_epoch_at=schedule.pending_epoch_at,
+    subnet_epoch_index=schedule.subnet_epoch_index,
+    tempo=schedule.tempo,
+    blocks_since_last_step=schedule.blocks_since_last_step,
+    current_block=current_block,
+    subnet_reveal_period_epochs=reveal_period,
+    block_time=12.0,
+    hotkey=wallet.hotkey.public_key,
+)
 
-uids, weights = convert_weights_and_uids_for_emit(uids, weights)
-
-print(crv3.get_encrypted_commit(uids, weights, version_key, tempo, current_block, netuid, subnet_reveal_period_epochs))
+print(f"Encrypted commit: {len(commit_bytes)} bytes, reveal round: {reveal_round}")
 ```
-expected result
+
+## General-purpose encryption
+
+### Encrypt a string for N blocks into the future
+
 ```python
-(b'\xb9\x96\xe4\xd1\xfd\xabm\x8cc\xeb\xe3W\r\xc7J\xb4\xea\xa9\xd5u}OG~\xae\xcc\x9a@\xdf\xee\x16\xa9\x0c\x8d7\xd6\xea_c\xc2<\xcb\xa6\xbe^K\x97|\x16\xc6|;\xb5Z\x97\xc9\xb4\x8em\xf1hv\x16\xcf\xea\x1e7\xbe-Z\xe7e\x1f$\n\xf8\x08\xcb\x18.\x94V\xa3\xd7\xcd\xc9\x04F::\t)Z\xc6\xbey \x00\x00\x00\x00\x00\x00\x00\xaaN\xe8\xe97\x8f\x99\xbb"\xdf\xad\xf6\\#%\xca:\xc2\xce\xf9\x96\x9d\x8f\x9d\xa2\xad\xfd\xc73j\x16\xda \x00\x00\x00\x00\x00\x00\x00\x84*\xb0\rw\xad\xdc\x02o\xf7i)\xbb^\x99e\xe2\\\xee\x02NR+-Q\xcd \xf7\x02\x83\xffV>\x00\x00\x00\x00\x00\x00\x00"\x00\x00\x00\x00\x00\x00\x00*\x13wXb\x93\xc5"F\x17F\x05\xcd\x15\xb0=\xe2d\xfco3\x16\xfd\xe9\xc6\xbc\xd1\xb3Y\x97\xf9\xb9!\x01\x0c\x00\x00\x00\x00\x00\x00\x00X\xa2\x8c\x18Wkq\xe5\xe6\x1c2\x86\x08\x00\x00\x00\x00\x00\x00\x00AES_GCM_', 13300875)
+from bittensor_drand import get_encrypted_commitment
+
+encrypted, reveal_round = get_encrypted_commitment(
+    "my secret data",
+    blocks_until_reveal=10,
+    block_time=12.0,
+)
+print(f"Encrypted: {len(encrypted)} bytes, reveal at round {reveal_round}")
 ```
 
-To test this in a local subnet:
-1. Spin up a local node based on the subtensor branch `spiigot/add-pallet-drand` using command `./scripts/localnet.sh False`
-2. Create a subnet
-3. Change the following hyperparameters:
-    - `commit_reveal_weights_enabled` -> `True`
-    - `tempo` -> 10 (keep in mind that you need to provide this as `tempo` argument to `get_encrypted_commit` function. Use polkadot website for this action.)
-    - `weights_rate_limit` -> 0 (Reduces the limit when you can set weights.)
-4. Register 1 or more wallets to the subnet
-5. Create and activate python virtual environment (`python3 -m venv venv && . venv/bin/activate`)
-6. Checkout bittensor `feat/roman/cr-v-3` branch.
-7. Install bittensor `pip install -e .`
-8. Cd to directory you cloned `https://github.com/opentensor/bittensor-commit-reveal/tree/staging` (FFI for CRv3).
-9. Install the `maturin` python package and build/install `bittensor-commit-reveal` package to your env using the command `pip install maturin && maturin develop`
-10. Run the following script within your python environment:
+### Encrypt / decrypt binary data (round-trip)
+
 ```python
-import requests
-import time
+from bittensor_drand import encrypt, decrypt
 
-from bittensor import Subtensor, logging, Wallet
+encrypted, reveal_round = encrypt(b"binary payload", n_blocks=5, block_time=12.0)
 
-DRAND_API_BASE_URL_Q = "https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971"
+# Later, after the reveal round has passed:
+decrypted = decrypt(encrypted, no_errors=False)
+```
+
+### Encrypt for a specific Drand round
+
+```python
+from bittensor_drand import encrypt_at_round
+
+encrypted, reveal_round = encrypt_at_round(b"payload", reveal_round=17200000)
+```
+
+### Batch decryption with a pre-fetched signature
+
+When decrypting multiple ciphertexts for the same round, fetch the signature once:
+
+```python
+from bittensor_drand import decrypt_with_signature, get_signature_for_round
+
+sig = get_signature_for_round(reveal_round=17200000)
+plaintext = decrypt_with_signature(encrypted, sig)
+```
+
+## ML-KEM-768 encryption
+
+For post-quantum key encapsulation (used by the chain's `NextKey` rotation):
+
+```python
+from bittensor_drand import encrypt_mlkem768, mlkem_kdf_id
+
+# pk_bytes: 1184-byte ML-KEM-768 public key from NextKey storage
+blob = encrypt_mlkem768(pk_bytes, b"plaintext", include_key_hash=True)
+
+# Blob format (include_key_hash=True):
+#   [key_hash(16)][u16 kem_len LE][kem_ct][nonce24][aead_ct]
+
+kdf = mlkem_kdf_id()  # b"v1" — raw shared secret, no HKDF
+```
+
+## Testing on a local subnet
+
+1. Start a local subtensor node with configurable tempo support:
+
+```bash
+LOCALNET_IMAGE_NAME=ghcr.io/opentensor/subtensor-localnet:pr-2638 ./scripts/localnet.sh
+```
+
+2. Create a subnet and configure hyperparameters:
+    - Set `commit_reveal_weights_enabled` to `True`
+    - Set `tempo` to your desired value (e.g. `360`)
+    - Set `weights_rate_limit` to `0` (for faster testing)
+
+3. Register a wallet to the subnet.
+
+4. Run a weight-setting script:
+
+```python
+import bittensor as bt
+from bittensor import logging
 
 logging.set_info()
 
+sub = bt.Subtensor("local")
+wallet = bt.Wallet()
 
-def get_drand_info(uri):
-    """Fetch Drand network information."""
-    url = f"{uri}/info"
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-
-
-def get_current_round(info):
-    """Calculate the current round based on genesis_time and period."""
-    current_time = int(time.time())
-    genesis_time = info["genesis_time"]
-    period = info["period"]
-    return (current_time - genesis_time) // period + 1
-
-
-def main():
-    sub = Subtensor("local")
-
-    uids = [0]
-    weights = [0.7]
-
-    wallet = Wallet()  # corresponds the subnet owner wallet
-
-    result, message = sub.set_weights(
-        wallet=wallet,
-        netuid=1,
-        uids=uids,
-        weights=weights,
-        wait_for_inclusion=True,
-        wait_for_finalization=True,
-    )
-    logging.info(f">>> Success, [blue]{result}[/blue], message: [magenta]{message}[/magenta]")
-
-    reveal_round = int(message.split(":")[-1])
-    # Fetch Drand network info
-    for uri in [DRAND_API_BASE_URL_Q]:
-        print(f"Fetching info from {uri}...")
-        info = get_drand_info(uri)
-        print("Info:", info)
-
-        while True:
-            time.sleep(info["period"])
-            current_round = get_current_round(info)
-            logging.console.info(f"Current round: [yellow]{current_round}[/yellow]")
-            if current_round == reveal_round:
-                logging.console.warning(f">>> It's time to reveal the target round: [blue]{reveal_round}[/blue]")
-
-                break
-
-
-if __name__ == "__main__":
-    main()
+result, message = sub.set_weights(
+    wallet=wallet,
+    netuid=1,
+    uids=[0],
+    weights=[1.0],
+    wait_for_inclusion=True,
+    wait_for_finalization=True,
+)
+logging.info(f"Result: {result}, message: {message}")
 ```
-11. Wait until your target_round comes.
 
-12. Check your weights with the following code:
+5. Wait for the reveal epoch, then verify weights were applied:
 
 ```python
 import bittensor as bt
 
-sub = bt.Subtensor(network="local")
-
-netuid = 1  # your created subnet's netuid
-
-print(sub.weights(netuid=netuid))
+sub = bt.Subtensor("local")
+print(sub.weights(netuid=1))
 ```
-13. You can now see the same weights which you committed earlier
+
+## API reference
+
+| Function | Description |
+|---|---|
+| `get_encrypted_commit_v2(...)` | Encrypt weights for commit-reveal using stateful epoch model |
+| `get_encrypted_commitment(data, blocks, block_time)` | Timelock-encrypt a string |
+| `encrypt(data, n_blocks, block_time)` | Timelock-encrypt binary data |
+| `encrypt_at_round(data, reveal_round)` | Encrypt for a specific Drand round |
+| `decrypt(data, no_errors=True)` | Decrypt (auto-fetches Drand signature) |
+| `decrypt_with_signature(data, sig_hex)` | Decrypt with a pre-fetched signature |
+| `get_signature_for_round(round)` | Fetch Drand BLS signature for a round |
+| `get_latest_round()` | Get the latest Drand round number |
+| `encrypt_mlkem768(pk, plaintext, hash)` | ML-KEM-768 + XChaCha20Poly1305 encryption |
+| `mlkem_kdf_id()` | Returns KDF identifier (`b"v1"`) |
+
+## Build & test
+
+```bash
+pip install maturin
+maturin develop
+cargo test
+pytest tests/ -v
+```
