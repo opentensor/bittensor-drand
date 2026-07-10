@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **This repository is archived and no longer maintained.**
+>
+> The drand timelock functionality was absorbed into `bittensor-core` in the [subtensor monorepo](https://github.com/RaoFoundation/subtensor) (`sdk/bittensor-core`), pinned to the same crate revisions as `pallet-drand` so ciphertexts cannot drift from what the chain can decrypt.
+
 # bittensor-drand
 
 Drand timelock encryption for Bittensor commit-reveal weights and general-purpose commitments. Rust core with Python bindings via PyO3.
